@@ -6,11 +6,17 @@ require_relative '../lib/ruby-handlebars/escapers/dummy_escaper'
 describe Handlebars::Handlebars do
   let(:hbs) {Handlebars::Handlebars.new}
 
-  def evaluate(template, args = {})
-    hbs.compile(template).call(args)
+  def evaluate(template, args = {}, **options)
+    hbs.compile(template, **options).call(args)
   end
 
   context 'evaluating' do
+    context 'strict mode' do
+      it 'raises an error' do
+        expect{evaluate('Hello {{you}}', {}, strict: true)}.to raise_error(Handlebars::Context::AttributeNotFoundError)
+      end
+    end
+
     it 'a dummy template' do
       expect(evaluate('My simple template')).to eq('My simple template')
     end
@@ -50,6 +56,10 @@ describe Handlebars::Handlebars do
     it 'handles a parameter with a dash' do
       expect(evaluate('Hello {{first-name}}', double("first-name": 'world'))).to eq('Hello world')
     end
+    it 'handles integer parameters' do
+      hbs.register_helper(:add){|context, a, b| a + b}
+      expect(evaluate('The sum is: {{add base_value 9}}', double("base_value": 2))).to eq('The sum is: 11')
+    end
 
     context 'partials' do
       it 'simple' do
@@ -71,7 +81,7 @@ describe Handlebars::Handlebars do
         hbs.register_partial('brackets', "[{{name}}]")
         expect(evaluate("Hello {{> brackets}}", {name: 'world'})).to eq("Hello [world]")
       end
-      
+
       it 'with a string argument' do
         hbs.register_partial('with_args', "[{{name}}]")
         expect(evaluate("Hello {{> with_args name='jon'}}")).to eq("Hello [jon]")
